@@ -11,31 +11,41 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Serialization;
 using System;
 
-namespace CourseLibrary.API {
-    public class Startup {
-        public Startup(IConfiguration configuration) {
+namespace CourseLibrary.API
+{
+    public class Startup
+    {
+        public Startup(IConfiguration configuration)
+        {
             Configuration = configuration;
         }
 
         public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
-        public void ConfigureServices(IServiceCollection services) {
-            services.AddControllers(setupAction => {
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddControllers(setupAction =>
+            {
                 setupAction.ReturnHttpNotAcceptable = true;
             }).
-            AddNewtonsoftJson(setupAction => {
+            AddNewtonsoftJson(setupAction =>
+            {
                 setupAction.SerializerSettings.ContractResolver =
                     new CamelCasePropertyNamesContractResolver();
             }).
             AddXmlDataContractSerializerFormatters().
-            ConfigureApiBehaviorOptions(setupAction => {
-                setupAction.InvalidModelStateResponseFactory = context => {
+            ConfigureApiBehaviorOptions(setupAction =>
+            {
+                setupAction.InvalidModelStateResponseFactory = context =>
+                {
 
-                    var problemDetails = new ValidationProblemDetails(context.ModelState) {
+                    var problemDetails = new ValidationProblemDetails(context.ModelState)
+                    {
                         Type = "https://courselibrary.com/modelvalidationproblem",
                         Title = "One or more validation errors occured.",
                         Status = StatusCodes.Status422UnprocessableEntity,
@@ -45,7 +55,8 @@ namespace CourseLibrary.API {
 
                     problemDetails.Extensions.Add("traceId", context.HttpContext.TraceIdentifier);
 
-                    return new UnprocessableEntityObjectResult(problemDetails) {
+                    return new UnprocessableEntityObjectResult(problemDetails)
+                    {
                         ContentTypes = { "application/problem+json" }
                     };
 
@@ -96,21 +107,34 @@ namespace CourseLibrary.API {
 
             services.AddScoped<ICourseLibraryRepository, CourseLibraryRepository>();
 
-            services.AddDbContext<CourseLibraryContext>(options => {
+            services.AddDbContext<CourseLibraryContext>(options =>
+            {
                 options.UseSqlServer(
                     @"Server=(localdb)\mssqllocaldb;Database=CourseLibraryDB;Trusted_Connection=True;");
             });
+
+
+            #region SwaggerImplementation
+            services.AddSwaggerGen(a =>
+                {
+                    a.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+                });
+            #endregion
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env) {
-            if (env.IsDevelopment()) {
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
                 app.UseDeveloperExceptionPage();
             }
-            else {
+            else
+            {
                 app.UseExceptionHandler(
                     appBuilder => appBuilder.Run(
-                        async context => {
+                        async context =>
+                        {
                             context.Response.StatusCode = 500;
                             context.Response.WriteAsync("An unexpected fault happened. Try again later");
                         }));
@@ -120,8 +144,16 @@ namespace CourseLibrary.API {
 
             app.UseAuthorization();
 
-            app.UseEndpoints(endpoints => {
+            app.UseEndpoints(endpoints =>
+            {
                 endpoints.MapControllers();
+            });
+
+            app.UseSwagger();
+
+            app.UseSwaggerUI(a =>
+            {
+                a.SwaggerEndpoint("/swagger/v1/swagger.json", "My API v1");
             });
         }
     }
